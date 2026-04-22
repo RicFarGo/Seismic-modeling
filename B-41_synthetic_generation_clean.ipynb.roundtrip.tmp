@@ -1,0 +1,128 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# B-41 Generación de sismograma sintético\n",
+        "\n",
+        "Flujo final limpio en dominio TWT:\n",
+        "\n",
+        "1. Carga y lectura del archivo.\n",
+        "2. Cálculo de logs adicionales.\n",
+        "3. Cálculo de ondícula Ricker.\n",
+        "4. Flujo único remuestreado: `AI -> AI filtrada -> RC -> SYNTHETIC`.\n",
+        "5. Un único plot final con tracks en TWT."
+      ],
+      "id": "190e72f4"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "import pandas as pd\n",
+        "\n",
+        "from functions.io_logs import parse_ascii_las_like\n",
+        "from functions.log_transforms import add_time_domain_logs, add_ai\n",
+        "from functions.resampling import filter_ai_and_resample\n",
+        "from functions.wavelet import ricker_wavelet, synthetic_from_rc\n",
+        "from functions.plotting import plot_final_twt_tracks"
+      ],
+      "execution_count": null,
+      "outputs": [],
+      "id": "f649912d"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# Parametros\n",
+        "FILE_PATH = r\"C:\\Users\\rfaro\\Documents\\Cursor\\data\\B-41_logs.txt\"\n",
+        "NULL_VALUE = -999.25\n",
+        "\n",
+        "# Flujo final confirmado\n",
+        "MEDIAN_WINDOW = 10\n",
+        "RESAMPLE_DT_MS = 2.0\n",
+        "RICKER_F0_HZ = 20.0\n",
+        "RICKER_LEN_MS = 128.0\n",
+        "RICKER_DT_MS = 2.0"
+      ],
+      "execution_count": null,
+      "outputs": [],
+      "id": "2378c1e9"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# 1) Carga y lectura + logs adicionales\n",
+        "df_raw = parse_ascii_las_like(FILE_PATH, NULL_VALUE)\n",
+        "df_time = add_time_domain_logs(df_raw)\n",
+        "df_time = add_ai(df_time)\n",
+        "\n",
+        "print(f\"Filas leidas: {len(df_raw):,}\")\n",
+        "df_time[[\"DEPT\", \"GR\", \"RHOB\", \"DT\", \"VEL_FROM_SONIC_MPS\", \"IA\", \"TWT_MS\"]].head()"
+      ],
+      "execution_count": null,
+      "outputs": [],
+      "id": "e7718fd6"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# 2) Ondicula Ricker\n",
+        "wavelet_t_ms, ricker = ricker_wavelet(\n",
+        "    f0_hz=RICKER_F0_HZ,\n",
+        "    length_ms=RICKER_LEN_MS,\n",
+        "    dt_ms=RICKER_DT_MS,\n",
+        ")\n",
+        "\n",
+        "print(f\"Ondicula Ricker: {len(ricker)} muestras\")\n",
+        "pd.DataFrame({\"t_ms\": wavelet_t_ms, \"ricker\": ricker}).head()"
+      ],
+      "execution_count": null,
+      "outputs": [],
+      "id": "0b6bd754"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# 3) Flujo unico remuestreado: AI filtrada -> RC remuestreado\n",
+        "final_df = filter_ai_and_resample(\n",
+        "    ai_df=df_time[[\"TWT_MS\", \"GR\", \"RHOB\", \"VEL_FROM_SONIC_MPS\", \"IA\"]],\n",
+        "    dt_ms=RESAMPLE_DT_MS,\n",
+        "    median_window=MEDIAN_WINDOW,\n",
+        ")\n",
+        "\n",
+        "# 4) Sintetico remuestreado desde RC\n",
+        "final_df[\"SYNTHETIC\"] = synthetic_from_rc(final_df[\"RC\"].to_numpy(), ricker)\n",
+        "\n",
+        "print(f\"Filas finales remuestreadas: {len(final_df):,}\")\n",
+        "final_df[[\"TWT_MS_REG\", \"GR\", \"RHOB\", \"VEL_FROM_SONIC_MPS\", \"AI_FILTERED\", \"RC\", \"SYNTHETIC\"]].head()"
+      ],
+      "execution_count": null,
+      "outputs": [],
+      "id": "0b618172"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# 5) Plot final unico en TWT (seccion completa)\n",
+        "plot_final_twt_tracks(final_df)"
+      ],
+      "id": "fe6cdbbe",
+      "execution_count": null,
+      "outputs": []
+    }
+  ],
+  "metadata": {
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}
