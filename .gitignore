@@ -1,9 +1,22 @@
+# Jupyter
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/
 
+# Python
 __pycache__/
 **/__pycache__/
 *.py[cod]
 
+# logs/temp
 *.log
 *.tmp
+
+# VSCode
+.vscode/
+
+# geophysics data
+*.sgy
+*.segy
+
+# old stuff
+old/
