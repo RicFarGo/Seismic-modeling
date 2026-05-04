@@ -7,9 +7,10 @@ __pycache__/
 **/__pycache__/
 *.py[cod]
 
-# logs/temp
+# logs/temp/debug
 *.log
 *.tmp
+debug-*
 
 # VSCode
 .vscode/
